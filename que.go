@@ -59,16 +59,6 @@ func (j *Job) Conn() *pgx.Conn {
 	return j.conn
 }
 
-// SetConn set *pgx.Conn to job
-// This method is used to test logic in WorkFunc without interacting with Worker
-func (j *Job) SetConn(conn *pgx.Conn) {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	j.conn = conn
-
-	return
-}
-
 // Delete marks this job as complete by deleting it form the database.
 //
 // You must also later call Done() to return this job's database connection to
