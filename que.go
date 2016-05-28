@@ -96,6 +96,14 @@ func (j *Job) Conn() Ext {
 	return j.conn
 }
 
+// Tx returns Txer interface
+func (j *Job) Tx() Txer {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	return j.tx
+}
+
 // Delete marks this job as complete by deleting it form the database.
 //
 // You must also later call Done() to return this job's database connection to

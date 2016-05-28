@@ -7,7 +7,7 @@ func TestInjectJobConn(j *Job, conn Ext) *Job {
 }
 
 // TestInjectJobTx injects tx to Job
-func TestInjectJobTx(j *Job, conn Ext) *Job {
-	j.conn = conn
+func TestInjectJobTx(j *Job, tx Txer) *Job {
+	j.tx = tx
 	return j
 }
