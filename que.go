@@ -44,7 +44,44 @@ type Job struct {
 	mu      sync.Mutex
 	deleted bool
 	pool    *pgx.ConnPool
-	conn    *pgx.Conn
+	conn    Ext
+	tx      Txer
+}
+
+// Queryer is an interface for Query
+type Queryer interface {
+	Query(query string, args ...interface{}) (*pgx.Rows, error)
+	QueryRow(query string, args ...interface{}) *pgx.Row
+}
+
+// Execer is an interface for Exec
+type Execer interface {
+	Exec(query string, args ...interface{}) (pgx.CommandTag, error)
+}
+
+// TxStarter is an interface to deal with transaction
+type TxStarter interface {
+	Begin() (*pgx.Tx, error)
+}
+
+// TxController is an interface to deal with transaction
+type TxController interface {
+	Commit() error
+	Rollback() error
+}
+
+// Ext is a union interface which can bind, query, and exec
+type Ext interface {
+	Queryer
+	Execer
+	TxStarter
+}
+
+// Txer is a interface for Tx
+type Txer interface {
+	Queryer
+	Execer
+	TxController
 }
 
 // Conn returns the pgx connection that this job is locked to. You may initiate
@@ -52,7 +89,7 @@ type Job struct {
 // Done(). At that point, this conn will be returned to the pool and it is
 // unsafe to keep using it. This function will return nil if the Job's
 // connection has already been released with Done().
-func (j *Job) Conn() *pgx.Conn {
+func (j *Job) Conn() Ext {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
@@ -96,7 +133,7 @@ func (j *Job) Done() {
 	// stop.
 	_ = j.conn.QueryRow("que_unlock_job", j.ID).Scan(&ok)
 
-	j.pool.Release(j.conn)
+	j.pool.Release(j.conn.(*pgx.Conn))
 	j.pool = nil
 	j.conn = nil
 }

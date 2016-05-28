@@ -95,6 +95,12 @@ func (w *Worker) WorkOne() (didWork bool) {
 	if j == nil {
 		return // no job was available
 	}
+	j.tx, err = j.Conn().Begin()
+	if err != nil {
+		log.Printf("failed to create transaction: %v", err)
+		return
+	}
+	defer j.tx.Rollback()
 	defer j.Done()
 	defer recoverPanic(j)
 
@@ -111,14 +117,18 @@ func (w *Worker) WorkOne() (didWork bool) {
 	}
 
 	if err = wf(j); err != nil {
+		j.tx.Rollback()
 		j.Error(err.Error())
+		j.tx.Commit()
 		return
 	}
 
 	if err = j.Delete(); err != nil {
+		j.tx.Rollback()
 		log.Printf("attempting to delete job %d: %v", j.ID, err)
 	}
 	log.Printf("event=job_worked job_id=%d job_type=%s", j.ID, j.Type)
+	j.tx.Commit()
 	return
 }
 
@@ -143,6 +153,7 @@ func (w *Worker) Shutdown() {
 // recoverPanic tries to handle panics in job execution.
 // A stacktrace is stored into Job last_error.
 func recoverPanic(j *Job) {
+	j.tx.Commit()
 	if r := recover(); r != nil {
 		// record an error on the job with panic message and stacktrace
 		stackBuf := make([]byte, 1024)

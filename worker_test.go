@@ -9,9 +9,9 @@ import (
 	"testing"
 )
 
-func init() {
-	log.SetOutput(ioutil.Discard)
-}
+// func init() {
+// 	log.SetOutput(ioutil.Discard)
+// }
 
 func TestWorkerWorkOne(t *testing.T) {
 	c := openTestClient(t)

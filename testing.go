@@ -1,9 +1,13 @@
 package que
 
-import "github.com/jackc/pgx"
+// TestInjectJobConn injects *pgx.Conn to Job
+func TestInjectJobConn(j *Job, conn Ext) *Job {
+	j.conn = conn
+	return j
+}
 
-// TestInjectJobConn inject *pgx.Conn to Job
-func TestInjectJobConn(j *Job, conn *pgx.Conn) *Job {
+// TestInjectJobTx injects tx to Job
+func TestInjectJobTx(j *Job, conn Ext) *Job {
 	j.conn = conn
 	return j
 }
