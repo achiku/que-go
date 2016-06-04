@@ -35,7 +35,13 @@ func truncateAndClose(pool *pgx.ConnPool) {
 	pool.Close()
 }
 
-func findOneJob(q queryable) (*Job, error) {
+type queriable interface {
+	Query(query string, args ...interface{}) (*pgx.Rows, error)
+	QueryRow(query string, args ...interface{}) *pgx.Row
+	Exec(query string, args ...interface{}) (pgx.CommandTag, error)
+}
+
+func findOneJob(q queriable) (*Job, error) {
 	findSQL := `
 	SELECT priority, run_at, job_id, job_class, args, error_count, last_error, queue
 	FROM que_jobs LIMIT 1`

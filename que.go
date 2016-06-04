@@ -1,11 +1,13 @@
 package que
 
 import (
+	"database/sql"
 	"errors"
 	"sync"
 	"time"
 
 	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/stdlib"
 )
 
 // Job is a single unit of work for Que to perform.
@@ -52,10 +54,6 @@ type Job struct {
 type Queryer interface {
 	Query(query string, args ...interface{}) (*pgx.Rows, error)
 	QueryRow(query string, args ...interface{}) *pgx.Row
-}
-
-// Execer is an interface for Exec
-type Execer interface {
 	Exec(query string, args ...interface{}) (pgx.CommandTag, error)
 }
 
@@ -73,14 +71,12 @@ type TxController interface {
 // Ext is a union interface which can bind, query, and exec
 type Ext interface {
 	Queryer
-	Execer
 	TxStarter
 }
 
 // Txer is a interface for Tx
 type Txer interface {
 	Queryer
-	Execer
 	TxController
 }
 
@@ -182,7 +178,11 @@ var ErrMissingType = errors.New("job type must be specified")
 
 // Enqueue adds a job to the queue.
 func (c *Client) Enqueue(j *Job) error {
-	return execEnqueue(j, c.pool)
+	conn, err := stdlib.OpenFromConnPool(c.pool)
+	if err != nil {
+		return err
+	}
+	return execEnqueue(j, conn)
 }
 
 // EnqueueInTx adds a job to the queue within the scope of the transaction tx.
@@ -191,11 +191,11 @@ func (c *Client) Enqueue(j *Job) error {
 //
 // It is the caller's responsibility to Commit or Rollback the transaction after
 // this function is called.
-func (c *Client) EnqueueInTx(j *Job, tx *pgx.Tx) error {
+func (c *Client) EnqueueInTx(j *Job, tx *sql.Tx) error {
 	return execEnqueue(j, tx)
 }
 
-func execEnqueue(j *Job, q queryable) error {
+func execEnqueue(j *Job, q StdQueryer) error {
 	if j.Type == "" {
 		return ErrMissingType
 	}
@@ -234,10 +234,11 @@ func (b bytea) FormatCode() int16 {
 	return pgx.TextFormatCode
 }
 
-type queryable interface {
-	Exec(sql string, arguments ...interface{}) (commandTag pgx.CommandTag, err error)
-	Query(sql string, args ...interface{}) (*pgx.Rows, error)
-	QueryRow(sql string, args ...interface{}) *pgx.Row
+// StdQueryer is an interface for Query
+type StdQueryer interface {
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
+	Exec(query string, args ...interface{}) (sql.Result, error)
 }
 
 // Maximum number of loop iterations in LockJob before giving up.  This is to

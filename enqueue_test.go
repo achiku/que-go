@@ -3,6 +3,8 @@ package que
 import (
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/stdlib"
 )
 
 func TestEnqueueOnlyType(t *testing.T) {
@@ -136,7 +138,11 @@ func TestEnqueueInTx(t *testing.T) {
 	c := openTestClient(t)
 	defer truncateAndClose(c.pool)
 
-	tx, err := c.pool.Begin()
+	conn, err := stdlib.OpenFromConnPool(c.pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := conn.Begin()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +152,7 @@ func TestEnqueueInTx(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	j, err := findOneJob(tx)
+	j, err := findOneJob(c.pool)
 	if err != nil {
 		t.Fatal(err)
 	}
