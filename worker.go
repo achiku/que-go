@@ -117,8 +117,10 @@ func (w *Worker) WorkOne() (didWork bool) {
 	}
 
 	if err = wf(j); err != nil {
+		// Rollback what WorkFunc have done so far if it returns error
 		j.tx.Rollback()
 		j.Error(err.Error())
+		// Commit to update error message and error count
 		j.tx.Commit()
 		return
 	}
