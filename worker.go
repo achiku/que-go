@@ -119,12 +119,10 @@ func (w *Worker) WorkOne() (didWork bool) {
 	if err = wf(j); err != nil {
 		j.tx.Rollback()
 		j.Error(err.Error())
-		j.tx.Commit()
 		return
 	}
 
 	if err = j.Delete(); err != nil {
-		j.tx.Rollback()
 		log.Printf("attempting to delete job %d: %v", j.ID, err)
 	}
 	log.Printf("event=job_worked job_id=%d job_type=%s", j.ID, j.Type)
